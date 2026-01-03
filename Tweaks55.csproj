@@ -87,6 +87,9 @@
     <Reference Include="HMRendering">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMRendering.dll</HintPath>
     </Reference>
+    <Reference Include="Main" Publicize="true">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Main.dll</HintPath>
+    </Reference>
     <Reference Include="MenuLightPreset">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\MenuLightPreset.dll</HintPath>
     </Reference>
@@ -110,9 +113,6 @@
     <Reference Include="System.Core"></Reference>
     <Reference Include="System.Data.DataSetExtensions"></Reference>
     <Reference Include="System.Data"></Reference>
-    <Reference Include="Main" Publicize="true">
-      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\Main.dll</HintPath>
-    </Reference>
     <Reference Include="HMLib" Publicize="true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMLib.dll</HintPath>
     </Reference>
@@ -161,7 +161,7 @@
     <Reference Include="UnityEngine.XRModule">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\UnityEngine.XRModule.dll</HintPath>
     </Reference>
-    <Reference Include="VRUI">
+    <Reference Include="VRUI" Publicize="true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\VRUI.dll</HintPath>
     </Reference>
   </ItemGroup>
