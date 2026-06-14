@@ -36,6 +36,8 @@ namespace Tweaks55 {
 		public bool disableBeatLines = false;
 		public bool disableCameraNoise = false;
 
+		public bool disableTelemetry = false;
+
 
 		public virtual bool staticLightsToggle { get; set; } = false;
 		public bool disableRawScore = false;

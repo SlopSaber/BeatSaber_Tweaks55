@@ -27,5 +27,14 @@ namespace Tweaks55.Util {
 
 			return t.GetMethod(methodName, bindingFlags);
 		}
+
+		public static MethodBase GetFirstContructor(string className, string assemblyName = "Main", BindingFlags bindingFlags = BindingFlags.Public | BindingFlags.NonPublic) {
+			if(!assemblies.TryGetValue(assemblyName, out Assembly assembly))
+				return null;
+
+			var t = assembly.GetType(className);
+
+			return t.GetConstructor(bindingFlags, null, Type.EmptyTypes, null);
+		}
 	}
 }
