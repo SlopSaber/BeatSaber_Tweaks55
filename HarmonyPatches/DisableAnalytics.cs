@@ -17,7 +17,7 @@ namespace Tweaks55.HarmonyPatches {
 			analyticsManager.SetSystemMode(AnalyticsSystemModeEnum.DISABLED);
 		}
 
-		static MethodBase TargetMethod() => Resolver.GetFirstContructor(nameof(AnalyticsEventsDispatcher), "BeatGames.Analytics");
+		static MethodBase TargetMethod() => AccessTools.Constructor(typeof(AnalyticsEventsDispatcher), new[] { typeof(AnalyticsManager), typeof(string) });
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 	}
 }
