@@ -62,6 +62,9 @@
     <Reference Include="BeatSaber.ViewSystem">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.ViewSystem.dll</HintPath>
     </Reference>
+    <Reference Include="BeatSaber.Haptics" Publicize="true">
+      <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BeatSaber.Haptics.dll</HintPath>
+    </Reference>
     <Reference Include="BGLib.UnityExtension">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\BGLib.UnityExtension.dll</HintPath>
       <Private>False</Private>
@@ -87,7 +90,7 @@
     <Reference Include="Hive.Versioning">
       <HintPath>$(BeatSaberDir)\Libs\Hive.Versioning.dll</HintPath>
     </Reference>
-    <Reference Include="HMRendering">
+    <Reference Include="HMRendering" Publicize="true">
       <HintPath>$(BeatSaberDir)\Beat Saber_Data\Managed\HMRendering.dll</HintPath>
     </Reference>
     <Reference Include="Main" Publicize="true">

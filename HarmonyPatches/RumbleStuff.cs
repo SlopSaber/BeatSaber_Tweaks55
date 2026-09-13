@@ -1,9 +1,10 @@
 ﻿using HarmonyLib;
-using Libraries.HM.HMLib.VR;
+using BeatSaber.Haptics;
 using System;
 using System.Reflection;
 using Tweaks55.Util;
 using UnityEngine;
+using UnityEngine.XR;
 
 namespace Tweaks55.HarmonyPatches {
 	[HarmonyPatch]
@@ -31,12 +32,12 @@ namespace Tweaks55.HarmonyPatches {
 				if(weakPreset._duration == 0f || weakPreset._strength == 0f)
 					return false;
 
-				____hapticFeedbackManager.PlayHapticFeedback(saberType.Node(), weakPreset);
+				____hapticFeedbackManager.PlayHapticFeedback(saberType == SaberType.SaberA ? XRNode.LeftHand : XRNode.RightHand, weakPreset);
 			} else {
 				if(normalPreset._duration == 0f || normalPreset._strength == 0f)
 					return false;
 
-				____hapticFeedbackManager.PlayHapticFeedback(saberType.Node(), normalPreset);
+				____hapticFeedbackManager.PlayHapticFeedback(saberType == SaberType.SaberA ? XRNode.LeftHand : XRNode.RightHand, normalPreset);
 			}
 
 			return false;

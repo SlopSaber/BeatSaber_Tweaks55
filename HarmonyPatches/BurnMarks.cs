@@ -16,7 +16,7 @@ namespace Tweaks55.HarmonyPatches {
 			return false;
 		}
 
-		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(SaberBurnMarkArea), nameof(SaberBurnMarkArea.OnEnable));
+		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(SaberBurnMarkArea), nameof(SaberBurnMarkArea.Initialize));
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 	}
 }
