@@ -23,6 +23,8 @@ namespace Tweaks55.HarmonyPatches {
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 	}
 
+	// Legacy obstacle prefabs use this component to select frame and glow visibility.
+#pragma warning disable CS0612
 	[HarmonyPatch]
 	static class DisableFakeWallBloom {
 		static readonly FieldAccessor<ConditionalActivation, bool>.Accessor ConditionalActivation_activateOnFalse = 
@@ -53,6 +55,8 @@ namespace Tweaks55.HarmonyPatches {
 		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(BeatmapObjectsInstaller), "InstallBindings");
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 	}
+
+#pragma warning restore CS0612
 
 	[HarmonyPatch]
 	static class TransparentWall {

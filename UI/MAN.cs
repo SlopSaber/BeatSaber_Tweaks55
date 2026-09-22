@@ -72,7 +72,7 @@ namespace Tweaks55.UI {
 		Config config = Config.Instance;
 
 		static bool isAprilFirst = (DateTime.Now.Month == 4) && (DateTime.Now.Day == 1);
-		static bool __true = true;
+		static bool __true => true;
 
 		void ClearBombColor() {
 			bombColor = BombColor.defaultColor;

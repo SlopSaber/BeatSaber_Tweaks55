@@ -6,6 +6,8 @@ using Tweaks55.Util;
 using UnityEngine;
 
 namespace Tweaks55.HarmonyPatches {
+	// Legacy bomb prefabs serialize this exact component; keep the typed material accessors.
+#pragma warning disable CS0612
 	[HarmonyPatch]
 	static class BombColor {
 		internal static readonly Color defaultColor = Color.black.ColorWithAlpha(0);
@@ -41,4 +43,5 @@ namespace Tweaks55.HarmonyPatches {
 		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(BeatmapObjectsInstaller), "InstallBindings");
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 	}
+#pragma warning restore CS0612
 }
