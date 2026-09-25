@@ -3,6 +3,7 @@ using IPA.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
 using Tweaks55.Util;
@@ -63,29 +64,48 @@ namespace Tweaks55.HarmonyPatches {
 		static FieldAccessor<ObstacleController, GameObject[]>.Accessor ObstacleController_visualWrappers = FieldAccessor<ObstacleController, GameObject[]>.GetAccessor("_visualWrappers");
 
 		static GameObject[] visualWrappersOriginal = null;
+		static ObstacleController originalPrefab = null;
+		static bool originalWrapperActive;
+
+		static bool HasVisualMod(string[] capabilities) => capabilities != null && capabilities.Any(x =>
+			string.Equals(x, "Noodle Extensions", StringComparison.OrdinalIgnoreCase) ||
+			string.Equals(x, "Chroma", StringComparison.OrdinalIgnoreCase));
 
 		[HarmonyPriority(int.MaxValue)]
-		static void Postfix(ObstacleController ____obstaclePrefab) {
+		static void Postfix(ObstacleController ____obstaclePrefab, GameplayCoreSceneSetupData ____sceneSetupData) {
+			if(originalPrefab != ____obstaclePrefab) {
+				originalPrefab = ____obstaclePrefab;
+				visualWrappersOriginal = null;
+			}
+
+			var difficulty = SongCore.Collections.GetCustomLevelSongDifficultyData(____sceneSetupData.beatmapKey);
+			var requirements = difficulty?.additionalDifficultyData;
+			bool transparentWalls = Config.Instance.transparentWalls &&
+				!HasVisualMod(requirements?._requirements) &&
+				!HasVisualMod(requirements?._suggestions);
+
 			if(visualWrappersOriginal != null) {
-				if(Config.Instance.transparentWalls)
+				if(transparentWalls)
 					return;
 
 				ObstacleController_visualWrappers(ref ____obstaclePrefab) = visualWrappersOriginal;
+				visualWrappersOriginal[0].SetActive(originalWrapperActive);
 				visualWrappersOriginal = null;
 				return;
 			}
 
-			if(!Config.Instance.transparentWalls)
+			if(!transparentWalls)
 				return;
 
-			visualWrappersOriginal = ObstacleController_visualWrappers(ref ____obstaclePrefab);
-
-			if(visualWrappersOriginal.Length != 2)
+			GameObject[] wrappers = ObstacleController_visualWrappers(ref ____obstaclePrefab);
+			if(wrappers.Length != 2)
 				return;
 
-			ObstacleController_visualWrappers(ref ____obstaclePrefab) = new[] { visualWrappersOriginal[1] };
+			visualWrappersOriginal = wrappers;
+			originalWrapperActive = wrappers[0].activeSelf;
+			ObstacleController_visualWrappers(ref ____obstaclePrefab) = new[] { wrappers[1] };
 
-			visualWrappersOriginal[0].SetActive(false);
+			wrappers[0].SetActive(false);
 		}
 
 		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(BeatmapObjectsInstaller), "InstallBindings");

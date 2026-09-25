@@ -6,7 +6,8 @@
 	"description": "A collection of various tweaks which by themselves are too simple for their own designated mods",
 	"gameVersion": "1.45.1",
 	"dependsOn": {
-		"BSIPA": "^4.0.5"
+		"BSIPA": "^4.0.5",
+		"SongCore": "^3.16.0"
 	},
 	"loadAfter": [
 		"SiraUtil",

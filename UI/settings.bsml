@@ -29,7 +29,7 @@
 						hover-hint="Disables Debris"
 					/>
 					<checkbox-setting apply-on-change="true" value="transparentWalls" text="Make Walls Transparent"
-						hover-hint="Makes walls fully transparent forsenCD"
+						hover-hint="Makes walls transparent except on maps requiring or suggesting Noodle Extensions or Chroma."
 					/>
 					<checkbox-setting apply-on-change="true" value="disableSliceScore" text="Disable Slice Score"
 						hover-hint="Disables the Score display you get per cut (115 etc)"
