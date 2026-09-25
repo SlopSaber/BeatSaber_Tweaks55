@@ -33,23 +33,40 @@ namespace Tweaks55.HarmonyPatches {
 
 		static readonly FieldAccessor<ConditionalActivation, BoolSO>.Accessor ConditionalActivation_value =
 			FieldAccessor<ConditionalActivation, BoolSO>.GetAccessor("_value");
+		static ObstacleController originalPrefab;
+		static ConditionalActivation originalFrame;
+		static ConditionalActivation originalFakeGlow;
+		static bool originalFrameActivation;
+		static bool originalFakeGlowActivation;
 
 		[HarmonyPriority(int.MaxValue)]
-		static void Prefix(ObstacleController ____obstaclePrefab) {
+		static void Prefix(ObstacleController ____obstaclePrefab, GameplayCoreSceneSetupData ____sceneSetupData) {
 			var x = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFrameController>()?
 				.GetComponent<ConditionalActivation>();
+			var fakeGlow = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFakeGlowController>()?
+				.GetComponent<ConditionalActivation>();
+
+			if(originalPrefab != ____obstaclePrefab) {
+				originalPrefab = ____obstaclePrefab;
+				originalFrame = x;
+				originalFakeGlow = fakeGlow;
+				if(x != null) originalFrameActivation = ConditionalActivation_activateOnFalse(ref x);
+				if(fakeGlow != null) originalFakeGlowActivation = ConditionalActivation_activateOnFalse(ref fakeGlow);
+			}
+
+			if(originalFrame != null) ConditionalActivation_activateOnFalse(ref originalFrame) = originalFrameActivation;
+			if(originalFakeGlow != null) ConditionalActivation_activateOnFalse(ref originalFakeGlow) = originalFakeGlowActivation;
+
+			if(!Config.Instance.disableFakeWallBloom || TransparentWall.HasVisualMod(____sceneSetupData.beatmapKey))
+				return;
 
 			if(x != null)
 				ConditionalActivation_activateOnFalse(ref x) = !(!Config.Instance.disableFakeWallBloom || ConditionalActivation_value(ref x));
 
+			if(fakeGlow != null) {
+				var bloomIsOn = ConditionalActivation_value(ref fakeGlow);
 
-			x = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFakeGlowController>()?
-				.GetComponent<ConditionalActivation>();
-
-			if(x != null) {
-				var bloomIsOn = ConditionalActivation_value(ref x);
-
-				ConditionalActivation_activateOnFalse(ref x) = !(!Config.Instance.disableFakeWallBloom != !bloomIsOn) || bloomIsOn;
+				ConditionalActivation_activateOnFalse(ref fakeGlow) = !(!Config.Instance.disableFakeWallBloom != !bloomIsOn) || bloomIsOn;
 			}
 		}
 
@@ -71,6 +88,12 @@ namespace Tweaks55.HarmonyPatches {
 			string.Equals(x, "Noodle Extensions", StringComparison.OrdinalIgnoreCase) ||
 			string.Equals(x, "Chroma", StringComparison.OrdinalIgnoreCase));
 
+		internal static bool HasVisualMod(BeatmapKey beatmapKey) {
+			var difficulty = SongCore.Collections.GetCustomLevelSongDifficultyData(beatmapKey);
+			var requirements = difficulty?.additionalDifficultyData;
+			return HasVisualMod(requirements?._requirements) || HasVisualMod(requirements?._suggestions);
+		}
+
 		[HarmonyPriority(int.MaxValue)]
 		static void Postfix(ObstacleController ____obstaclePrefab, GameplayCoreSceneSetupData ____sceneSetupData) {
 			if(originalPrefab != ____obstaclePrefab) {
@@ -78,11 +101,8 @@ namespace Tweaks55.HarmonyPatches {
 				visualWrappersOriginal = null;
 			}
 
-			var difficulty = SongCore.Collections.GetCustomLevelSongDifficultyData(____sceneSetupData.beatmapKey);
-			var requirements = difficulty?.additionalDifficultyData;
 			bool transparentWalls = Config.Instance.transparentWalls &&
-				!HasVisualMod(requirements?._requirements) &&
-				!HasVisualMod(requirements?._suggestions);
+				!HasVisualMod(____sceneSetupData.beatmapKey);
 
 			if(visualWrappersOriginal != null) {
 				if(transparentWalls)
