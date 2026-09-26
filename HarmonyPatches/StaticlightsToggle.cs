@@ -17,6 +17,7 @@ namespace Tweaks55.HarmonyPatches {
 
 		static GameObject replaceLabel;
 		static ToggleWithCallbacks replaceToggle;
+		static Coroutine effectInitialization;
 
 		[HarmonyPriority(int.MinValue)]
 		static void Postfix(
@@ -39,6 +40,9 @@ namespace Tweaks55.HarmonyPatches {
 		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
 
 		public static void ToggleEffectState(bool setStatic) {
+			if(instance == null || toggle1 == null || toggle2 == null)
+				return;
+
 			var theEffect = setStatic ? EnvironmentEffectsFilterPreset.NoEffects : EnvironmentEffectsFilterPreset.AllEffects;
 
 			toggle1.SelectCellWithValue(theEffect);
@@ -47,19 +51,23 @@ namespace Tweaks55.HarmonyPatches {
 			instance.SetIsDirty();
 		}
 
-		static IEnumerator InitEffectState(bool setStatic) {
+		static IEnumerator InitEffectState(PlayerSettingsPanelController owner, bool setStatic) {
 			yield return new WaitForSeconds(.01f);
-
-			ToggleEffectState(setStatic);
+			effectInitialization = null;
+			if(owner != null && owner == instance && Plugin.enabled && lastState == true)
+				ToggleEffectState(setStatic);
 		}
 
 		static bool? lastState = null;
 
 		public static void Setup(bool enable) {
-			if(instance == null)
-				return;
-
 			if(enable == lastState)
+				return;
+			if(effectInitialization != null) {
+				SharedCoroutineStarter.instance.StopCoroutine(effectInitialization);
+				effectInitialization = null;
+			}
+			if(instance == null)
 				return;
 
 			lastState = enable;
@@ -110,7 +118,7 @@ namespace Tweaks55.HarmonyPatches {
 				instance.playerSpecificSettings.environmentEffectsFilterExpertPlusPreset == EnvironmentEffectsFilterPreset.NoEffects;
 
 				replaceToggle.isOn = targetState;
-				SharedCoroutineStarter.instance.StartCoroutine(InitEffectState(targetState));
+				effectInitialization = SharedCoroutineStarter.instance.StartCoroutine(InitEffectState(instance, targetState));
 			}
 		}
 	}

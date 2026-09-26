@@ -10,13 +10,19 @@ namespace Tweaks55.HarmonyPatches {
 				return;
 			}
 
-			SetEnabledState(!Config.Instance.disableGlobalParticles);
+			SetEnabledState(!Config.Instance.disableGlobalParticles, true);
 		}
 
-		public static void SetEnabledState(bool enabled) {
+		public static void SetEnabledState(bool enabled, bool refreshScene = false) {
+			if(enabled == lastKnownState && !refreshScene)
+				return;
+
 			if(!lastKnownState || !enabled) {
-				foreach(var x in Resources.FindObjectsOfTypeAll<ParticleSystem>())
-					if(x.name == "DustPS" || x.name == "DustBritney") x.gameObject.SetActive(enabled);
+				foreach(var particle in Resources.FindObjectsOfTypeAll<ParticleSystem>()) {
+					var name = particle.name;
+					if(name == "DustPS" || name == "DustBritney")
+						particle.gameObject.SetActive(enabled);
+				}
 			}
 
 			lastKnownState = enabled;
