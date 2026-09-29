@@ -4,3 +4,5 @@ obj/*
 *.user
 HarmonyPatches/RemoveSplashscreen.cs
 HarmonyPatchHelper.cs
+# Local Visual Studio cache
+.vs/
