@@ -1,14 +1,17 @@
 ﻿using BeatSaberMarkupLanguage;
 using BeatSaberMarkupLanguage.Attributes;
 using BeatSaberMarkupLanguage.MenuButtons;
+using BeatSaberMarkupLanguage.Parser;
 using BeatSaberMarkupLanguage.Util;
 using BeatSaberMarkupLanguage.ViewControllers;
 using HMUI;
+using IPA.Utilities.Async;
 using System;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Net;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Tweaks55.HarmonyPatches;
 using UnityEngine;
@@ -50,6 +53,8 @@ namespace Tweaks55.UI {
 
 		public static void Deinit() {
 			MainMenuAwaiter.MainMenuInitializing -= InitializeOnMainMenuLoad;
+			if(flow != null && flow.view != null)
+				flow.view.RetireSponsorRequest();
 
 			if(theButton != null)
 				MenuButtons.Instance.UnregisterButton(theButton);
@@ -105,28 +110,165 @@ namespace Tweaks55.UI {
 		private readonly string version = $"Version {Assembly.GetExecutingAssembly().GetName().Version.ToString(3)} by Kinsi55";
 
 		[UIComponent("sponsorsText")] CurvedTextMeshPro sponsorsText = null;
-		Task<string> sponsorDownload;
-		void OpenSponsorsLink() => Process.Start("https://github.com/sponsors/kinsi55");
-		async void OpenSponsorsModal() {
-			var text = sponsorsText;
-			if(text == null)
-				return;
-			text.text = "Loading...";
-			if(sponsorDownload == null || sponsorDownload.IsCompleted)
-				sponsorDownload = DownloadSponsors();
-			var description = await sponsorDownload;
-			if(text == null)
-				return;
-			text.text = description;
-			text.gameObject.SetActive(false);
-			text.gameObject.SetActive(true);
+		[UIComponent("sponsorsModal")] ModalView sponsorsModal = null;
+		[UIParams] BSMLParserParams parserParams = null;
+		SponsorRequest sponsorRequest;
+		int sponsorRevision;
+		bool sponsorsOpen;
+		bool sponsorsDestroyed;
+
+		sealed class SponsorRequest {
+			public readonly CancellationTokenSource Cancellation = new CancellationTokenSource();
+			public readonly CurvedTextMeshPro Text;
+			public readonly ModalView Modal;
+			public int Revision;
+			public bool Retired;
+			public Task Completion;
+
+			public SponsorRequest(CurvedTextMeshPro text, ModalView modal, int revision) {
+				Text = text;
+				Modal = modal;
+				Revision = revision;
+			}
 		}
 
-		static async Task<string> DownloadSponsors() {
+		void OpenSponsorsLink() => Process.Start("https://github.com/sponsors/kinsi55");
+
+		[UIAction("#post-parse")]
+		void SponsorsParsed() {
+			RetireSponsorRequest();
+			var parsed = parserParams;
+			parsed.AddEvent("CloseSponsorModal", () => {
+				if(ReferenceEquals(parserParams, parsed))
+					RetireSponsorRequest();
+			});
+		}
+
+		protected override void DidDeactivate(bool removedFromHierarchy, bool screenSystemDisabling) {
+			RetireSponsorRequest();
+			base.DidDeactivate(removedFromHierarchy, screenSystemDisabling);
+		}
+
+		protected override void OnDestroy() {
+			sponsorsDestroyed = true;
+			RetireSponsorRequest();
+			base.OnDestroy();
+		}
+
+		internal void RetireSponsorRequest() {
+			sponsorsOpen = false;
+			sponsorRevision++;
+			RetireRequest(sponsorRequest);
+		}
+
+		static void RetireRequest(SponsorRequest request) {
+			if(request == null || request.Retired)
+				return;
+			request.Retired = true;
+			// Retain the request slot until the download and worker abort have finished.
+			request.Cancellation.Cancel();
+		}
+
+		void OpenSponsorsModal() {
+			var text = sponsorsText;
+			if(sponsorsDestroyed || this == null || !Plugin.enabled || !isActivated || !isActiveAndEnabled || text == null || sponsorsModal == null)
+				return;
+			sponsorsOpen = true;
+			var revision = ++sponsorRevision;
+			text.text = "Loading...";
+			if(!CanUseSponsors(text, revision))
+				return;
+			if(sponsorRequest != null && sponsorRequest.Completion != null && sponsorRequest.Completion.IsCompleted) {
+				sponsorRequest.Cancellation.Dispose();
+				sponsorRequest = null;
+			}
+			if(sponsorRequest != null) {
+				if(!sponsorRequest.Retired && ReferenceEquals(sponsorRequest.Text, text) && ReferenceEquals(sponsorRequest.Modal, sponsorsModal))
+					sponsorRequest.Revision = revision;
+				else
+					RetireRequest(sponsorRequest);
+				return;
+			}
+			StartSponsorRequest(text, revision);
+		}
+
+		void StartSponsorRequest(CurvedTextMeshPro text, int revision) {
+			var request = new SponsorRequest(text, sponsorsModal, revision);
+			sponsorRequest = request;
+			var token = request.Cancellation.Token;
+			var download = Task.Run(() => DownloadSponsors(token), token);
+			request.Completion = CompleteSponsorsAsync(request, download);
+		}
+
+		async Task CompleteSponsorsAsync(SponsorRequest request, Task<string> download) {
+			string description = null;
 			try {
-				using(var client = new WebClient())
-					return await client.DownloadStringTaskAsync("http://kinsi.me/sponsors/bsout.php");
+				description = await download.ConfigureAwait(false);
+			} catch(OperationCanceledException) {
 			} catch {
+				description = "Failed to load";
+			}
+			try {
+				await UnityMainThreadTaskScheduler.Factory.StartNew(() => FinishSponsorRequest(request, description)).ConfigureAwait(false);
+			} catch(Exception ex) {
+				Plugin.Log.Error(ex);
+			}
+		}
+
+		bool CanUseSponsors(CurvedTextMeshPro text, int revision) {
+			return !sponsorsDestroyed && sponsorsOpen && sponsorRevision == revision && Plugin.enabled && this != null
+				&& isActivated && isActiveAndEnabled && text != null && ReferenceEquals(sponsorsText, text) && sponsorsModal != null;
+		}
+
+		bool CanPublishSponsors(SponsorRequest request, int revision) {
+			return ReferenceEquals(sponsorRequest, request) && !request.Retired && !request.Cancellation.IsCancellationRequested
+				&& CanUseSponsors(request.Text, revision) && ReferenceEquals(sponsorsModal, request.Modal)
+				&& request.Modal.gameObject.activeInHierarchy;
+		}
+
+		void FinishSponsorRequest(SponsorRequest request, string description) {
+			var revision = request.Revision;
+			try {
+				if(description == null || !CanPublishSponsors(request, revision))
+					return;
+				request.Text.text = description;
+				if(!CanPublishSponsors(request, revision))
+					return;
+				request.Text.gameObject.SetActive(false);
+				if(CanPublishSponsors(request, revision))
+					request.Text.gameObject.SetActive(true);
+			} finally {
+				if(ReferenceEquals(sponsorRequest, request)) {
+					sponsorRequest = null;
+					request.Cancellation.Dispose();
+					if((request.Retired || sponsorRevision != revision || !ReferenceEquals(sponsorsText, request.Text))
+						&& CanUseSponsors(sponsorsText, sponsorRevision))
+						StartSponsorRequest(sponsorsText, sponsorRevision);
+				}
+			}
+		}
+
+		static async Task<string> DownloadSponsors(CancellationToken token) {
+			try {
+				token.ThrowIfCancellationRequested();
+				using(var client = new WebClient()) {
+					var download = client.DownloadStringTaskAsync("http://kinsi.me/sponsors/bsout.php");
+					Task abort = null;
+					// WebClient resets cancellation during kickoff, so register after starting.
+					var registration = token.Register(() => abort = Task.Run(() => client.CancelAsync()));
+					try {
+						var description = await download.ConfigureAwait(false);
+						token.ThrowIfCancellationRequested();
+						return description;
+					} finally {
+						// Disposal waits for the callback to finish assigning its abort task.
+						registration.Dispose();
+						if(abort != null)
+							await abort.ConfigureAwait(false);
+					}
+				}
+			} catch {
+				token.ThrowIfCancellationRequested();
 				return "Failed to load";
 			}
 		}
