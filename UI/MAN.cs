@@ -116,6 +116,7 @@ namespace Tweaks55.UI {
 		int sponsorRevision;
 		bool sponsorsOpen;
 		bool sponsorsDestroyed;
+		static int sponsorBrowserOpening;
 
 		sealed class SponsorRequest {
 			public readonly CancellationTokenSource Cancellation = new CancellationTokenSource();
@@ -132,7 +133,29 @@ namespace Tweaks55.UI {
 			}
 		}
 
-		void OpenSponsorsLink() => Process.Start("https://github.com/sponsors/kinsi55");
+		void OpenSponsorsLink() {
+			if(Interlocked.CompareExchange(ref sponsorBrowserOpening, 1, 0) != 0)
+				return;
+			try {
+				var thread = new Thread(OpenSponsorsBrowser) { IsBackground = true, Name = "Tweaks55 Sponsors" };
+				// URL shell handlers can require STA; set it before starting the thread.
+				thread.SetApartmentState(ApartmentState.STA);
+				thread.Start();
+			} catch {
+				Interlocked.Exchange(ref sponsorBrowserOpening, 0);
+				throw;
+			}
+		}
+
+		static void OpenSponsorsBrowser() {
+			try {
+				using(var process = Process.Start("https://github.com/sponsors/kinsi55")) { }
+			} catch(Exception ex) {
+				Plugin.Log.Error(ex);
+			} finally {
+				Interlocked.Exchange(ref sponsorBrowserOpening, 0);
+			}
+		}
 
 		[UIAction("#post-parse")]
 		void SponsorsParsed() {
