@@ -1,7 +1,8 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project>
+  <Import Project="Sdk.props" Sdk="Microsoft.NET.Sdk" />
 
   <PropertyGroup>
-    <GameDirectory>D:\BSManager\BSInstances\1.45.2</GameDirectory>
+    <GameDirectory>D:\BSManager\BSInstances\1.45.3</GameDirectory>
     <TargetFramework>net472</TargetFramework>
     <OutputType>Library</OutputType>
     <LangVersion>8</LangVersion>
@@ -189,4 +190,6 @@
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
   </ItemGroup>
+  <Import Project="Sdk.targets" Sdk="Microsoft.NET.Sdk" />
+  <Import Project="BSIPA.Layout.targets" Condition="Exists('$(GameDirectory)\IPA\Data\Managed\IPA.Loader.dll') OR Exists('$(BeatSaberDir)\IPA\Data\Managed\IPA.Loader.dll')" />
 </Project>
