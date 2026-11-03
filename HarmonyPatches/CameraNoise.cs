@@ -13,20 +13,11 @@ namespace Tweaks55.HarmonyPatches {
 	static class CameraNoise {
 		static readonly int _globalNoiseTextureID = Shader.PropertyToID("_GlobalBlueNoiseTex");
 
-		static bool lastDisableState = false;
-
 		[HarmonyPriority(int.MaxValue)]
-		static bool Prefix() {
-			if(!Config.Instance.disableCameraNoise) {
-				lastDisableState = false;
-				return true;
-			}
-
-			if(!lastDisableState) {
+		static void Postfix() {
+			// Preserve per-camera noise parameters and random shader values before suppressing grain.
+			if(Config.Instance.disableCameraNoise)
 				Shader.SetGlobalTexture(_globalNoiseTextureID, null);
-				lastDisableState = true;
-			}
-			return false;
 		}
 
 		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(BlueNoiseDitheringUpdater), nameof(BlueNoiseDitheringUpdater.HandleCameraPreRender), assemblyName: "HMRendering");

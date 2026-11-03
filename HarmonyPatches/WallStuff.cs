@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using Tweaks55.Util;
 using UnityEngine;
 
@@ -33,29 +34,35 @@ namespace Tweaks55.HarmonyPatches {
 
 		static readonly FieldAccessor<ConditionalActivation, BoolSO>.Accessor ConditionalActivation_value =
 			FieldAccessor<ConditionalActivation, BoolSO>.GetAccessor("_value");
-		static ObstacleController originalPrefab;
-		static ConditionalActivation originalFrame;
-		static ConditionalActivation originalFakeGlow;
-		static bool originalFrameActivation;
-		static bool originalFakeGlowActivation;
+		sealed class OriginalActivation {
+			internal bool activateOnFalse;
+		}
+
+		static readonly ConditionalWeakTable<ConditionalActivation, OriginalActivation> originalActivations =
+			new ConditionalWeakTable<ConditionalActivation, OriginalActivation>();
+
+		static void RestoreActivation(ConditionalActivation activation) {
+			if(activation == null)
+				return;
+
+			var original = originalActivations.GetValue(activation, component => new OriginalActivation {
+				activateOnFalse = ConditionalActivation_activateOnFalse(ref component)
+			});
+			ConditionalActivation_activateOnFalse(ref activation) = original.activateOnFalse;
+		}
 
 		[HarmonyPriority(int.MaxValue)]
 		static void Prefix(ObstacleController ____obstaclePrefab, GameplayCoreSceneSetupData ____sceneSetupData) {
-			var x = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFrameController>()?
+			WallVisualState.logNextObstacle = true;
+			Plugin.Log.Info($"Wall setup: level={____sceneSetupData.beatmapKey.levelId}, prefab={____obstaclePrefab.name}, fakeBloomDisabled={Config.Instance.disableFakeWallBloom}, transparent={Config.Instance.transparentWalls}, cameraNoiseDisabled={Config.Instance.disableCameraNoise}");
+
+			var x = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFrameController>(true)?
 				.GetComponent<ConditionalActivation>();
-			var fakeGlow = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFakeGlowController>()?
+			var fakeGlow = ____obstaclePrefab.GetComponentInChildren<ParametricBoxFakeGlowController>(true)?
 				.GetComponent<ConditionalActivation>();
 
-			if(originalPrefab != ____obstaclePrefab) {
-				originalPrefab = ____obstaclePrefab;
-				originalFrame = x;
-				originalFakeGlow = fakeGlow;
-				if(x != null) originalFrameActivation = ConditionalActivation_activateOnFalse(ref x);
-				if(fakeGlow != null) originalFakeGlowActivation = ConditionalActivation_activateOnFalse(ref fakeGlow);
-			}
-
-			if(originalFrame != null) ConditionalActivation_activateOnFalse(ref originalFrame) = originalFrameActivation;
-			if(originalFakeGlow != null) ConditionalActivation_activateOnFalse(ref originalFakeGlow) = originalFakeGlowActivation;
+			RestoreActivation(x);
+			RestoreActivation(fakeGlow);
 
 			if(!Config.Instance.disableFakeWallBloom || TransparentWall.HasVisualMod(____sceneSetupData.beatmapKey))
 				return;
@@ -75,6 +82,30 @@ namespace Tweaks55.HarmonyPatches {
 	}
 
 #pragma warning restore CS0612
+
+	[HarmonyPatch]
+	static class WallVisualState {
+		internal static bool logNextObstacle;
+		static readonly int tintColorID = Shader.PropertyToID("_TintColor");
+
+		[HarmonyPriority(int.MinValue)]
+		static void Postfix(ObstacleController __instance) {
+			if(!logNextObstacle)
+				return;
+			logNextObstacle = false;
+
+			var block = new MaterialPropertyBlock();
+			var renderers = __instance.GetComponentsInChildren<Renderer>(true).Select(renderer => {
+				var material = renderer.sharedMaterial;
+				renderer.GetPropertyBlock(block);
+				return $"{renderer.name}: active={renderer.gameObject.activeInHierarchy}, enabled={renderer.enabled}, layer={renderer.gameObject.layer}, material={material?.name}, shader={material?.shader?.name}, queue={material?.renderQueue}, tint={block.GetColor(tintColorID)}";
+			});
+			Plugin.Log.Info("First wall visuals: " + string.Join("; ", renderers));
+		}
+
+		static MethodBase TargetMethod() => Resolver.GetMethod(nameof(ObstacleController), nameof(ObstacleController.Init));
+		static Exception Cleanup(Exception ex) => Plugin.PatchFailed(ex);
+	}
 
 	[HarmonyPatch]
 	static class TransparentWall {
