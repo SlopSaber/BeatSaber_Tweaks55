@@ -52,6 +52,10 @@ namespace Tweaks55.HarmonyPatches {
 				hasOffset[0] = hasOffset[1] = false;
 				return;
 			}
+			// Without a running XR display there is no OpenXR session yet; connecting to OpenVR
+			// first would make SteamVR reject the session the game creates afterwards.
+			if(!XRSettings.isDeviceActive)
+				return;
 
 			if(poseFrame != Time.frameCount) {
 				poseFrame = Time.frameCount;
