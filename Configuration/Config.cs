@@ -30,6 +30,8 @@ namespace Tweaks55 {
 
 		public bool disableHealthWarning = false;
 		public bool keepGameSettingsOnCancel = false;
+		public bool keepSabersInOverlay = false;
+		public bool keepMusicInOverlay = false;
 		public float scrollSpeedMultiplier = 1f;
 
 		public bool disableFakeWallBloom = false;
